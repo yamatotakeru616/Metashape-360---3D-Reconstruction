@@ -1,0 +1,6 @@
+{
+  "name": "Metashape 360 - 3D Reconstruction",
+  "description": "Insta360などの全天球カメラ映像から点群、カメラ軌跡、テクスチャ付き3Dメッシュを再構築・プレビューする3Dフォトグラメトリーシミュレーター",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
