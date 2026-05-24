@@ -1,0 +1,13 @@
+{
+  "name": "realityscan-3dgs-pipeline-gui",
+  "version": "1.0.0",
+  "description": "Standalone Web GUI for 360 Video to 3DGS Reconstruction Pipeline via RealityScan CLI",
+  "main": "app.js",
+  "type": "module",
+  "scripts": {
+    "start": "node app.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}

@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Metashape 360 - 3DGS Pipeline Studio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Outfit:wght@400;700;900&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-base: #070913;
+      --bg-card: rgba(15, 23, 42, 0.75);
+      --border-color: rgba(51, 65, 85, 0.5);
+      --accent-color: #6366f1;
+      --accent-gradient: linear-gradient(135deg, #6366f1 0%, #a855f7 100%);
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --neon-green: #10b981;
+      --neon-amber: #f59e0b;
+      --neon-red: #ef4444;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-base);
+      color: var(--text-main);
+      font-family: 'Inter', sans-serif;
+      overflow-x: hidden;
+      min-height: 100vh;
+      background-image: 
+        radial-gradient(circle at 10% 20%, rgba(99, 102, 241, 0.08) 0%, transparent 40%),
+        radial-gradient(circle at 90% 80%, rgba(168, 85, 247, 0.08) 0%, transparent 40%);
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem 1.5rem;
+    }
+
+    header {
+      margin-bottom: 2rem;
+      text-align: center;
+    }
+
+    h1 {
+      font-family: 'Outfit', sans-serif;
+      font-size: 2.5rem;
+      font-weight: 900;
+      background: var(--accent-gradient);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      margin-bottom: 0.5rem;
+      letter-spacing: -0.05em;
+    }
+
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 0.95rem;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 1.5rem;
+    }
+
+    @media (min-width: 900px) {
+      .grid {
+        grid-template-columns: 450px 1fr;
+      }
+    }
+
+    /* ガラスモーフィズムカード */
+    .card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 20px;
+      padding: 1.75rem;
+      backdrop-filter: blur(16px);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+      transition: border-color 0.3s ease;
+    }
+
+    .card:hover {
+      border-color: rgba(99, 102, 241, 0.3);
+    }
+
+    .card-title {
+      font-family: 'Outfit', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 700;
+      margin-bottom: 1.25rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    /* フォーム要素 */
+    .form-group {
+      margin-bottom: 1.25rem;
+    }
+
+    label {
+      display: block;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 0.5rem;
+    }
+
+    .input-row {
+      display: flex;
+      gap: 0.5rem;
+    }
+
+    input[type="text"] {
+      flex: 1;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 0.75rem 1rem;
+      color: var(--text-main);
+      font-size: 0.85rem;
+      transition: all 0.2s ease;
+    }
+
+    input[type="text"]:focus {
+      outline: none;
+      border-color: var(--accent-color);
+      box-shadow: 0 0 10px rgba(99, 102, 241, 0.2);
+    }
+
+    .btn-secondary {
+      background: rgba(30, 41, 59, 0.8);
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 0.75rem 1.25rem;
+      font-size: 0.85rem;
+      font-weight: 700;
+      border-radius: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      transition: all 0.2s ease;
+    }
+
+    .btn-secondary:hover {
+      background: rgba(51, 65, 85, 0.8);
+      border-color: var(--accent-color);
+    }
+
+    /* VRAM トグル */
+    .vram-widget {
+      background: rgba(99, 102, 241, 0.04);
+      border: 1px dashed rgba(99, 102, 241, 0.2);
+      border-radius: 16px;
+      padding: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .vram-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.75rem;
+    }
+
+    .vram-title {
+      font-size: 0.85rem;
+      font-weight: 800;
+      color: var(--accent-color);
+    }
+
+    /* トグルスイッチ */
+    .switch {
+      position: relative;
+      display: inline-block;
+      width: 44px;
+      height: 24px;
+    }
+
+    .switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #334155;
+      transition: .4s;
+      border-radius: 24px;
+    }
+
+    .slider:before {
+      position: absolute;
+      content: "";
+      height: 16px;
+      width: 16px;
+      left: 4px;
+      bottom: 4px;
+      background-color: white;
+      transition: .4s;
+      border-radius: 50%;
+    }
+
+    input:checked + .slider {
+      background-image: var(--accent-gradient);
+    }
+
+    input:checked + .slider:before {
+      transform: translateX(20px);
+    }
+
+    .vram-bar-container {
+      height: 8px;
+      background: #1e293b;
+      border-radius: 4px;
+      overflow: hidden;
+      margin-bottom: 0.5rem;
+    }
+
+    .vram-bar {
+      height: 100%;
+      width: 65%;
+      background: var(--neon-green);
+      transition: all 0.5s ease;
+    }
+
+    .vram-desc {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      display: flex;
+      justify-content: space-between;
+    }
+
+    /* 時間表示 */
+    .time-container {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .time-box {
+      background: rgba(15, 23, 42, 0.4);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 0.75rem;
+      text-align: center;
+    }
+
+    .time-label {
+      font-size: 0.7rem;
+      color: var(--text-muted);
+      margin-bottom: 0.25rem;
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+
+    .time-value {
+      font-family: 'Fira Code', monospace;
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--text-main);
+    }
+
+    /* 実行ボタン */
+    .btn-primary {
+      width: 100%;
+      background: var(--accent-gradient);
+      border: none;
+      color: white;
+      padding: 1rem;
+      font-size: 0.95rem;
+      font-weight: 800;
+      letter-spacing: 0.1em;
+      border-radius: 14px;
+      cursor: pointer;
+      box-shadow: 0 4px 20px rgba(99, 102, 241, 0.35);
+      transition: all 0.2s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+
+    .btn-primary:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 24px rgba(99, 102, 241, 0.5);
+    }
+
+    .btn-primary:active:not(:disabled) {
+      transform: translateY(0);
+    }
+
+    .btn-primary:disabled {
+      background: #1e293b;
+      color: #64748b;
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    /* リアルタイムログモニター */
+    .log-card {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      min-height: 450px;
+    }
+
+    .log-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 0.75rem;
+      border-bottom: 1px solid var(--border-color);
+      padding-bottom: 0.75rem;
+    }
+
+    .pulse-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--text-muted);
+      display: inline-block;
+    }
+
+    .pulse-dot.active {
+      background: var(--neon-green);
+      box-shadow: 0 0 8px var(--neon-green);
+      animation: pulse 1.5s infinite;
+    }
+
+    @keyframes pulse {
+      0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+      70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(16, 185, 129, 0); }
+      100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+    }
+
+    .log-viewport {
+      flex: 1;
+      background: #02040a;
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 1rem;
+      font-family: 'Fira Code', monospace;
+      font-size: 0.8rem;
+      color: #94a3b8;
+      overflow-y: auto;
+      line-height: 1.5;
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      max-height: 500px;
+    }
+
+    .log-line {
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    .log-info { color: #94a3b8; }
+    .log-success { color: var(--neon-green); font-weight: 600; }
+    .log-warning { color: var(--neon-amber); }
+    .log-error { color: var(--neon-red); font-weight: 600; }
+    .log-step { color: var(--accent-color); font-weight: 600; }
+
+    /* スピナー */
+    .spinner {
+      width: 18px;
+      height: 18px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      display: inline-block;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <h1>METASHAPE 360</h1>
+      <p class="subtitle">3DGS Pipeline Studio - 360動画 ⇨ RealityScan ⇨ LichtFeld-Studio</p>
+    </header>
+
+    <div class="grid">
+      <!-- 左パネル: コントロール -->
+      <div class="card">
+        <h2 class="card-title">📁 パイプライン設定</h2>
+
+        <!-- ビデオパス -->
+        <div class="form-group">
+          <label>① 360度パノラマ動画のパス (Equirectangular)</label>
+          <div class="input-row">
+            <input type="text" id="videoPath" placeholder="C:\path\to\your_video.mp4" readonly>
+            <button class="btn-secondary" id="btnPickVideo">📁 参照</button>
+          </div>
+        </div>
+
+        <!-- 保存先フォルダー -->
+        <div class="form-group">
+          <label>② 成果物の保存先フォルダ</label>
+          <div class="input-row">
+            <input type="text" id="outputDir" placeholder="空欄時はスクリプトと同階層に自動作成されます" readonly>
+            <button class="btn-secondary" id="btnPickFolder">📁 参照</button>
+          </div>
+        </div>
+
+        <!-- RTX 3050Ti VRAM防衛ウィジェット -->
+        <div class="vram-widget">
+          <div class="vram-header">
+            <span class="vram-title">🛡️ RTX 3050 Ti (4GB VRAM) クラッシュ防衛</span>
+            <label class="switch">
+              <input type="checkbox" id="vramGuard" checked>
+              <span class="slider"></span>
+            </label>
+          </div>
+          <div class="vram-bar-container">
+            <div class="vram-bar" id="vramBar"></div>
+          </div>
+          <div class="vram-desc">
+            <span id="vramModeLabel">低VRAM防衛：FrameCount=25, Size=1024px</span>
+            <span id="vramUsageLabel">約 2.5 / 4.0 GB (安全)</span>
+          </div>
+        </div>
+
+        <!-- 時間・進捗ボックス -->
+        <div class="time-container">
+          <div class="time-box">
+            <div class="time-label">開始時刻</div>
+            <div class="time-value" id="startTime">--:--:--</div>
+          </div>
+          <div class="time-box">
+            <div class="time-label">経過時間</div>
+            <div class="time-value" id="elapsedTime">00:00</div>
+          </div>
+          <div class="time-box">
+            <div class="time-label">予想残り時間</div>
+            <div class="time-value" id="remainingTime">00:00</div>
+          </div>
+        </div>
+
+        <!-- 実行ボタン -->
+        <button class="btn-primary" id="btnStart" disabled>
+          <span>🚀 パイプライン処理開始</span>
+        </button>
+      </div>
+
+      <!-- 右パネル: リアルタイムログ -->
+      <div class="card log-card">
+        <div class="log-header">
+          <h2 class="card-title">💻 リアルタイム診断コンソール</h2>
+          <div>
+            <span class="pulse-dot" id="statusIndicator"></span>
+            <span id="statusText" style="font-size: 0.8rem; color: var(--text-muted); margin-left: 0.25rem;">待機中</span>
+          </div>
+        </div>
+
+        <div class="log-viewport" id="logViewport">
+          <div class="log-line log-info">システムはアライメント開始を待っています...</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const videoPathInput = document.getElementById("videoPath");
+    const outputDirInput = document.getElementById("outputDir");
+    const btnPickVideo = document.getElementById("btnPickVideo");
+    const btnPickFolder = document.getElementById("btnPickFolder");
+    const btnStart = document.getElementById("btnStart");
+    const vramGuard = document.getElementById("vramGuard");
+    const vramBar = document.getElementById("vramBar");
+    const vramModeLabel = document.getElementById("vramModeLabel");
+    const vramUsageLabel = document.getElementById("vramUsageLabel");
+
+    const startTimeEl = document.getElementById("startTime");
+    const elapsedTimeEl = document.getElementById("elapsedTime");
+    const remainingEl = document.getElementById("remainingTime");
+
+    const logViewport = document.getElementById("logViewport");
+    const statusIndicator = document.getElementById("statusIndicator");
+    const statusText = document.getElementById("statusText");
+
+    let isRunning = false;
+    let elapsedInterval = null;
+    let remainingInterval = null;
+    let secondsElapsed = 0;
+    let secondsRemaining = 0;
+
+    // VRAM防衛ロジックのUI連動
+    function updateVramUi() {
+      if (vramGuard.checked) {
+        vramBar.style.width = "62%";
+        vramBar.style.backgroundColor = "var(--neon-green)";
+        vramModeLabel.textContent = "低VRAM防衛：FrameCount=25, Size=1024px";
+        vramUsageLabel.textContent = "約 2.5 / 4.0 GB (安全)";
+      } else {
+        vramBar.style.width = "95%";
+        vramBar.style.backgroundColor = "var(--neon-red)";
+        vramModeLabel.textContent = "制限解除：FrameCount=45, Size=2048px (高品質)";
+        vramUsageLabel.textContent = "約 3.9 / 4.0 GB (警告: クラッシュ注意)";
+      }
+    }
+
+    vramGuard.addEventListener("change", updateVramUi);
+    updateVramUi(); // 初期化
+
+    // ビデオ選択
+    btnPickVideo.addEventListener("click", async () => {
+      if (isRunning) return;
+      try {
+        const res = await fetch("/api/pick-video", { method: "POST" });
+        const data = await res.json();
+        if (data.path) {
+          videoPathInput.value = data.path;
+          btnStart.disabled = false;
+        }
+      } catch (err) {
+        alert("ファイルダイアログの起動に失敗しました: " + err.message);
+      }
+    });
+
+    // 保存先フォルダ選択
+    btnPickFolder.addEventListener("click", async () => {
+      if (isRunning) return;
+      try {
+        const res = await fetch("/api/pick-folder", { method: "POST" });
+        const data = await res.json();
+        if (data.path) {
+          outputDirInput.value = data.path;
+        }
+      } catch (err) {
+        alert("フォルダダイアログの起動に失敗しました: " + err.message);
+      }
+    });
+
+    // ログを追加するヘルパー
+    function addLogLine(text) {
+      const line = document.createElement("div");
+      line.className = "log-line";
+
+      // ログ種別の判定とカラーリング
+      if (text.includes("✔") || text.includes("正常に") || text.includes("完了")) {
+        line.classList.add("log-success");
+      } else if (text.includes("❌") || text.includes("エラー") || text.includes("failed")) {
+        line.classList.add("log-error");
+      } else if (text.includes("⚠️") || text.includes("警告") || text.includes("Warning")) {
+        line.classList.add("log-warning");
+      } else if (text.startsWith("[STEP")) {
+        line.classList.add("log-step");
+      } else {
+        line.classList.add("log-info");
+      }
+
+      line.textContent = text;
+      logViewport.appendChild(line);
+      logViewport.scrollTop = logViewport.scrollHeight;
+    }
+
+    // フォーマット時間ヘルパー
+    function formatTime(sec) {
+      const m = Math.floor(sec / 60).toString().padStart(2, "0");
+      const s = (sec % 60).toString().padStart(2, "0");
+      return `${m}:${s}`;
+    }
+
+    // 処理開始
+    btnStart.addEventListener("click", () => {
+      if (isRunning || !videoPathInput.value) return;
+
+      isRunning = true;
+      btnStart.disabled = true;
+      btnPickVideo.disabled = true;
+      btnPickFolder.disabled = true;
+      vramGuard.disabled = true;
+
+      // 状態の更新
+      statusIndicator.classList.add("active");
+      statusText.textContent = "処理中...";
+      btnStart.innerHTML = '<span class="spinner"></span> 処理を実行中...';
+
+      // 時刻の表示
+      const now = new Date();
+      startTimeEl.textContent = now.toTimeString().split(" ")[0];
+
+      // タイマーリセット
+      secondsElapsed = 0;
+      elapsedTimeEl.textContent = "00:00";
+      elapsedInterval = setInterval(() => {
+        secondsElapsed++;
+        elapsedTimeEl.textContent = formatTime(secondsElapsed);
+      }, 1000);
+
+      // 予想残り時間 (防衛モード時は高速なため短く設定)
+      secondsRemaining = vramGuard.checked ? 180 : 360; // 3分 または 6分
+      remainingEl.textContent = formatTime(secondsRemaining);
+      remainingInterval = setInterval(() => {
+        if (secondsRemaining > 1) {
+          secondsRemaining--;
+          remainingEl.textContent = formatTime(secondsRemaining);
+        }
+      }, 1000);
+
+      // ログのクリア
+      logViewport.innerHTML = "";
+      addLogLine("[SYSTEM] パイプライン実行準備中...");
+
+      // Server-Sent Events (SSE) でプロセスログをストリーミング受信
+      const frameCount = vramGuard.checked ? 25 : 45;
+      const imageSize = vramGuard.checked ? 1024 : 2048;
+
+      const queryParams = new URLSearchParams({
+        videoPath: videoPathInput.value,
+        outputDir: outputDirInput.value,
+        frameCount: frameCount,
+        imageSize: imageSize
+      });
+
+      const eventSource = new EventSource(`/api/run-pipeline?${queryParams.toString()}`);
+
+      eventSource.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+
+        if (data.type === "status") {
+          statusText.textContent = data.message;
+        } else if (data.type === "log") {
+          addLogLine(data.message);
+        } else if (data.type === "complete") {
+          addLogLine(data.message);
+          cleanup(true);
+          eventSource.close();
+        } else if (data.type === "error") {
+          addLogLine("❌ エラー: " + data.message);
+          cleanup(false);
+          eventSource.close();
+        }
+      };
+
+      eventSource.onerror = () => {
+        addLogLine("❌ 通信エラーが発生しました。");
+        cleanup(false);
+        eventSource.close();
+      };
+    });
+
+    function cleanup(isSuccess) {
+      isRunning = false;
+      btnStart.disabled = false;
+      btnPickVideo.disabled = false;
+      btnPickFolder.disabled = false;
+      vramGuard.disabled = false;
+
+      statusIndicator.classList.remove("active");
+      statusText.textContent = isSuccess ? "完了" : "エラー終了";
+      btnStart.innerHTML = "🚀 パイプライン処理開始";
+
+      clearInterval(elapsedInterval);
+      clearInterval(remainingInterval);
+      remainingEl.textContent = "00:00";
+    }
+  </script>
+</body>
+</html>
