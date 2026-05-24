@@ -32,6 +32,7 @@ import {
 import { motion, AnimatePresence } from "motion/react";
 import { Project, ChatMessage, InputAsset, AlignmentLog, MatchingPairState } from "./types";
 import { SAMPLE_SCENES } from "./data";
+import { buildAlignmentPairs, estimateAlignmentSeconds, getFrameCountForAsset, getTotalFrameCount } from "./alignment";
 import { ThreeViewer } from "./components/ThreeViewer";
 import { ColmapExporter } from "./components/ColmapExporter";
 import { RealityScanWorkflow } from "./components/RealityScanWorkflow";
@@ -427,6 +428,12 @@ export default function App() {
     // 複数アセット対応の汎用アライメントシミュレーター
   const startReconstruction = async () => {
     if (isProcessing) return;
+    if (assets.length === 0) {
+      triggerVibrate([40, 40, 80]);
+      addLog(`[SYSTEM] アライメント対象の動画または画像が登録されていません。先にアセットを追加してください。`, "warning");
+      setProject(prev => ({ ...prev, status: "error", progress: 0 }));
+      return;
+    }
 
     triggerVibrate([80, 40, 80]);
     setIsProcessing(true);
@@ -441,17 +448,8 @@ export default function App() {
     let accumulatedFrames = 0;
 
     // --- 全体の推定残り時間 (ETA) の算出 ---
-    let estExtractTime = 0;
-    assets.forEach(ast => {
-      const runFps = is3050TiProfile ? Math.min(fps, 3) : fps;
-      const framesCount = ast.type === 'image_single' ? 1 : Math.max(4, Math.floor(ast.duration * runFps));
-      estExtractTime += framesCount * 0.20; // 1枚あたり 200ms
-    });
-
-    const totalPairs = totalAssets >= 2 ? (totalAssets * (totalAssets - 1)) / 2 : 1;
-    const estPairTime = totalPairs * 4 * 0.40; // 1ペア4ステップ * 400ms
-    const estReconTime = 5 * 0.40; // 5ステップ * 400ms
-    const totalEstSec = Math.ceil(estExtractTime + estPairTime + estReconTime + 3); // 3秒のバッファを追加
+    const totalFrames = getTotalFrameCount(assets, fps, is3050TiProfile);
+    const totalEstSec = estimateAlignmentSeconds(assets, fps, is3050TiProfile);
 
     setTotalEtaSeconds(totalEstSec);
     setRemainingEtaSeconds(totalEstSec);
@@ -479,25 +477,8 @@ export default function App() {
         let alignProg = 45;
         let pairIndex = 0;
         
-        // パノラマ動画、通常動画、高画質写真などの架空の組合わせをシミュレート
-        const simulatedPairs: { a: string, b: string, finalPts: number }[] = [];
-        if (totalAssets >= 2) {
-          for (let i = 0; i < totalAssets; i++) {
-            for (let j = i + 1; j < totalAssets; j++) {
-              simulatedPairs.push({
-                a: assets[i].name,
-                b: assets[j].name,
-                finalPts: Math.floor(600 + Math.random() * 800)
-              });
-            }
-          }
-        } else {
-          simulatedPairs.push({
-            a: assets[0]?.name || "メイン動画",
-            b: "推定ベースカメラパス",
-            finalPts: 1100
-          });
-        }
+        // パノラマ動画、通常動画、高画質写真などの組合わせを再現性のある値でシミュレート
+        const simulatedPairs = buildAlignmentPairs(assets, pointLimit);
 
         let currentPairStep = 0; 
         let pairMatchedFeatures = 0;
@@ -687,8 +668,7 @@ export default function App() {
 
       // 各アセットのフレーム切り出しを順次シミュレート
       const currentAsset = assets[currentAssetIndex];
-      const runFps = is3050TiProfile ? Math.min(fps, 3) : fps;
-      const framesCount = currentAsset.type === 'image_single' ? 1 : Math.max(4, Math.floor(currentAsset.duration * runFps));
+      const framesCount = getFrameCountForAsset(currentAsset, fps, is3050TiProfile);
       
       let currentFrame = 0;
       addLog(`[EXTRACT] アセット【${currentAsset.name}】のフレーム抽出処理を開始しました。目標キーフレーム数 = ${framesCount} 枚。`, "info");
@@ -703,7 +683,7 @@ export default function App() {
         triggerVibrate(15);
 
         // 前半 10% - 45% をフレーム抽出のプログレスとする
-        const prog = 10 + Math.floor((accumulatedFrames / (totalAssets * 10)) * 35);
+        const prog = 10 + Math.floor((accumulatedFrames / Math.max(1, totalFrames)) * 35);
         setProject(prev => ({
           ...prev,
           progress: Math.min(45, prog),
